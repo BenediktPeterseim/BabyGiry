@@ -45,13 +45,50 @@ def Bernoulli (p : ℚ) (nonneg : 0 ≤ p) (lt_one : p ≤ 1): FinProb Bool wher
     simp
 
 
+-- Observation: For Finset, >>= requires decidable equality.
+-- Hence, my definition of FinProb is not well-behaved constructively!
+-- Let's try again!
+
+structure QProb (α : Type) where
+  expectation : (α → ℚ) → ℚ  -- expectation functional
+  nonnegative : ∀ f : (α → ℚ), f ≥ 0 → expectation f ≥ 0
+  additive : ∀ f g : (α → ℚ), expectation (f + g) = expectation f + expectation g
+  normalized : expectation (fun _ ↦ 1) = 1
+
+-- Let's try to create a monad instance directly
+
+instance : Monad QProb where
+  pure x := {
+    expectation := fun f ↦ f x
+    nonnegative := by
+      intros f h
+      exact h x
+    additive := by
+      intros f g
+      simp
+    normalized := rfl
+  }
+  bind μ f := {
+    expectation := fun g ↦ μ.expectation (fun x ↦ (f x).expectation g)
+    nonnegative := by
+      intros g h
+      apply μ.nonnegative
+      intro y
+      apply (f y).nonnegative
+      exact h
+    additive := by
+      intros g h
+      simp
+      sorry
+    normalized := by
+      sorry
+  }
 
 -- TODO :
 -- 1. write down example of a FinProb (e.g. coinflip) (DONE)
 -- 2. add requirements : positivity, sum to 1 (DONE)
 -- 3. adjust example (DONE)
--- 4. Write P : FinProb Bool → ℚ evaluting mass at true, rename mass to mass?
---    Add some comments. Remove simp by using "simp?". Rename coinflip to BernoulliTrial?
+-- 4. Finish proofs
 -- 5. implement monad structure
 -- 6. introduce nice notation
 -- 7. nice non-trivial example
