@@ -77,11 +77,9 @@ instance : Monad QProb where
       apply (f y).nonnegative
       exact h
     additive := by
-      intros g h
-      simp
-      sorry
+      sorry -- Do calculation first on paper.
     normalized := by
-      sorry
+      sorry -- same. maybe conv is necessary.
   }
 
 -- TODO :
