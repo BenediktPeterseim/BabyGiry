@@ -89,4 +89,4 @@ instance : Monad QProb where
 -- 4. Finish proofs
 -- 5. implement monad structure
 -- 6. introduce nice notation
--- 7. nice non-trivial example
+-- 7. nice example, e.g. birthday paradox
