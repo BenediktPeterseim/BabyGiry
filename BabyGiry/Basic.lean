@@ -77,9 +77,16 @@ instance : Monad QProb where
       apply (f y).nonnegative
       exact h
     additive := by
-      sorry -- Do calculation first on paper.
+      intros g h
+      simp only [QProb.additive]
+      apply μ.additive
     normalized := by
-      sorry -- same. maybe conv is necessary.
+      conv =>
+        dsimp
+        lhs
+        pattern QProb.expectation (f _) fun _ ↦ 1
+        rw [(f x).normalized]
+      apply μ.normalized
   }
 
 -- TODO :
