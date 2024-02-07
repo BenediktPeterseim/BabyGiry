@@ -82,7 +82,7 @@ instance : Monad QProb where
       apply μ.additive
     normalized := by
       conv =>
-        dsimp
+        dsimp only
         lhs
         pattern QProb.expectation (f _) fun _ ↦ 1
         rw [(f x).normalized]
