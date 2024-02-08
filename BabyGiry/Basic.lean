@@ -89,11 +89,27 @@ instance : Monad QProb where
       apply μ.normalized
   }
 
+
+def UniformDist (support : Finset α) : QProb α where
+  expectation (f : _) := ∑ x in support, (f x) / support.card
+  nonnegative := by
+    sorry
+  additive := by
+    sorry
+  normalized := by
+    sorry
+
+
+def SameBirthday : QProb Bool := do
+  let x <- UniformDist (Finset.range 365)
+  let y <- UniformDist (Finset.range 365)
+  return x = y
+
+def ProbabilityOf (event : QProb Bool) : ℚ := event.expectation (fun x ↦ if x then 1 else 0)
+
+#eval ProbabilityOf SameBirthday
+
 -- TODO :
--- 1. write down example of a FinProb (e.g. coinflip) (DONE)
--- 2. add requirements : positivity, sum to 1 (DONE)
--- 3. adjust example (DONE)
--- 4. Finish proofs
--- 5. implement monad structure
--- 6. introduce nice notation
--- 7. nice example, e.g. birthday paradox
+-- 1. finish proofs
+-- 2. birthday paradox
+-- 3. conditioning
