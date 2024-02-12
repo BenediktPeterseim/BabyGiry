@@ -3,6 +3,7 @@ import Mathlib.Data.Rat.Basic
 import Mathlib.Algebra.BigOperators.Basic
 import Mathlib.Tactic
 
+
 open Finset BigOperators
 
 structure FinProb (α : Type) where
@@ -100,16 +101,46 @@ def UniformDist (support : Finset α) : QProb α where
     sorry
 
 
-def SameBirthday : QProb Bool := do
-  let x <- UniformDist (Finset.range 365)
-  let y <- UniformDist (Finset.range 365)
-  return x = y
+def IID (μ : QProb α) (n : ℕ) : QProb (List α) :=
+  if n = 0 then
+    pure []
+  else do
+    let l <- IID μ (n -1)
+    let x <- μ
+    return l.append [x]
+
 
 def ProbabilityOf (event : QProb Bool) : ℚ := event.expectation (fun x ↦ if x then 1 else 0)
 
-#eval ProbabilityOf SameBirthday
+
+
+-- *-- Examples -----------------------------------------*
+-- *-----------------------------------------------------*
+-- *A. Probability of one random number dividing another.*
+
+def numberRange : ℕ := 100
+
+def RandomNumberDividesAnother : QProb Bool := do
+  let x <- UniformDist (Finset.range numberRange)
+  let y <- UniformDist (Finset.range numberRange)
+  return x % y = 0
+
+
+-- #eval ProbabilityOf RandomNumberDividesAnother
+
+-- *B. Probability that out of 4 people, two have the same month of birth.*
+
+def numberOfPeople : ℕ := 4
+
+def TwoPeopleWithSameMonthOfBirth : QProb Bool := do
+  let l <- IID (UniformDist (Finset.range 12)) numberOfPeople
+  return ∃ i j : (Fin numberOfPeople), l[i]! = l[j]! ∧ i ≠ j
+
+-- #eval ProbabilityOf TwoPeopleWithSameMonthOfBirth
 
 -- TODO :
 -- 1. finish proofs
--- 2. birthday paradox
+-- 2. maybe change example A. to ask for coprime-ness?
 -- 3. conditioning
+-- 4. implement Bernoulii distribution, random choice, and other "standard examples"
+-- 5. Bayesian updating example
