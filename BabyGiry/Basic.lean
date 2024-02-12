@@ -138,9 +138,43 @@ def TwoPeopleWithSameMonthOfBirth : QProb Bool := do
 
 -- #eval ProbabilityOf TwoPeopleWithSameMonthOfBirth
 
+
+-- *Conditionals*
+
+def conditionExpectation (μ : QProb (α × Bool)) (f : α → ℚ) : QProb ℚ := do
+  let (x, A) <- μ
+  if A then
+    return (f x) / ProbabilityOf (pure A)
+      else
+    return 0
+
+
+def condition (μ : QProb (α × Bool)) : QProb α where
+  expectation (f : α → ℚ) := (conditionExpectation μ f).expectation id -- wrong implementation!
+  nonnegative := by
+    sorry
+  additive := by
+    sorry
+  normalized := by
+    sorry
+
+notation:100 lhs:100 "|" rhs:101 => (condition (pure (lhs, rhs)))
+
+def RollThreeGivenOdd : QProb Bool := do
+  let x <- UniformDist (Finset.range 6)
+  let A <- pure (x % 2 = 1 : Bool)
+  let res2 <- x | A
+  -- equivalently: let res <- (condition (pure (x, A)))
+  return res2 = 5
+
+#eval ProbabilityOf RollThreeGivenOdd -- this is wrong!
+-- E(f(X) | A, X ~ μ) = E(f * 1_A) / E(1_A)
+
 -- TODO :
+-- 0. Correct definition of conditional.
 -- 1. finish proofs
 -- 2. maybe change example A. to ask for coprime-ness?
 -- 3. conditioning
+-- 3.5 Make abbrev QProb Bool := Event? Rename QProb to Random?
 -- 4. implement Bernoulii distribution, random choice, and other "standard examples"
 -- 5. Bayesian updating example
