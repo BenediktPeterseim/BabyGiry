@@ -23,7 +23,7 @@ def Coinflip : FinProb Bool where
   normalized := by rfl
 
 
-def Bernoulli (p : ℚ) (nonneg : 0 ≤ p) (lt_one : p ≤ 1): FinProb Bool where
+def BernoulliOld (p : ℚ) (nonneg : 0 ≤ p) (lt_one : p ≤ 1): FinProb Bool where
   support := {true, false}
   mass := fun x => if x then p else 1 - p
   nonnegative := by
@@ -101,6 +101,13 @@ def UniformDist (support : Finset α) : QProb α where
     sorry
 
 
+def Bernoulli (p : ℚ) (nonneg : 0 ≤ p) (lt_one : p ≤ 1) : QProb Bool where
+  expectation (f : Bool → ℚ):= p * (f True) + (1-p) * (f False)
+  nonnegative := by sorry
+  additive := by sorry
+  normalized := by sorry
+
+
 def IID (μ : QProb α) (n : ℕ) : QProb (List α) :=
   if n = 0 then
     pure []
@@ -158,20 +165,41 @@ def condition (μ : QProb (α × Bool)) : QProb α where
   normalized := by
     sorry
 
-notation:100 lhs:100 "|" rhs:101 => (condition (pure (lhs, rhs)))
 
-def RollThreeGivenOdd : QProb Bool := do
+def RandomBoolPairAnd (μ : QProb (Bool × Bool)) : QProb Bool := do
+  let (p, q) <- μ
+  return p ∧ q
+
+def RandomBoolPairSecond (μ : QProb (Bool × Bool)) : QProb Bool := do
+  let (p, q) <- μ
+  return q
+
+def condProb (μ : QProb (Bool × Bool)) : ℚ := ProbabilityOf (RandomBoolPairAnd μ) / ProbabilityOf (RandomBoolPairSecond μ)
+
+lemma nonnegative_of_condProb (μ : QProb (Bool × Bool)) : condProb μ ≥ 0 := by sorry
+
+lemma lt_one_of_condProb (μ : QProb (Bool × Bool)) : condProb μ ≤ 1 := by sorry
+
+
+def conditionally (μ : QProb (Bool × Bool)) : QProb Bool :=
+  Bernoulli (condProb μ) (nonnegative_of_condProb μ) (lt_one_of_condProb μ)
+
+
+notation:10 lhs:10 "|" rhs:11 => (lhs, rhs)
+
+def Test3 : QProb Bool := conditionally do
   let x <- UniformDist (Finset.range 6)
-  let A <- pure (x % 2 = 1 : Bool)
-  let res2 <- x | A
-  -- equivalently: let res <- (condition (pure (x, A)))
-  return res2 = 5
+  return x = 3 | x % 2 = 1 ∧ x < 5
 
-#eval ProbabilityOf RollThreeGivenOdd -- this is wrong!
--- E(f(X) | A, X ~ μ) = E(f * 1_A) / E(1_A)
+
+-- #eval ProbabilityOf Test3
+
+
+
+
 
 -- TODO :
--- 0. Correct definition of conditional.
+-- 0. Clean up
 -- 1. finish proofs
 -- 2. maybe change example A. to ask for coprime-ness?
 -- 3. conditioning
