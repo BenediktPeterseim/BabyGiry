@@ -194,12 +194,17 @@ def Test3 : QProb Bool := conditionally do
 
 -- #eval ProbabilityOf Test3
 
+def winCadillac : QProb Bool := conditionally do
+  let carDoor <- UniformDist (Finset.range 3) -- A car is placed uniformly at random behind one of three doors.
+  let initialDoor <- UniformDist (Finset.range 3) -- I choose a door, uniformly at random.
+  let montysDoor <- UniformDist ((Finset.range 3) \ {carDoor, initialDoor}) -- Monty Hall picks a door (neither my initially chosen door, nor the one with the car).
+  return carDoor = 1 | initialDoor = 0 ∧ montysDoor = 2 -- The event that the car is behind Door 1, given that I chose Door 0, and Monty Door 2.
 
-
-
+#eval ProbabilityOf winCadillac
 
 -- TODO :
--- 0. Clean up
+-- 0. Clean up, change notation for conditional? (Perhaps a bit dangerous?)
+--    Finish Monty Hall problem example.
 -- 1. finish proofs
 -- 2. maybe change example A. to ask for coprime-ness?
 -- 3. conditioning
