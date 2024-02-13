@@ -50,7 +50,7 @@ def BernoulliOld (p : ℚ) (nonneg : 0 ≤ p) (lt_one : p ≤ 1): FinProb Bool w
 -- Hence, my definition of FinProb is not well-behaved constructively!
 -- Let's try again!
 
-structure QProb (α : Type) where
+structure random (α : Type) where
   expectation : (α → ℚ) → ℚ  -- expectation functional
   nonnegative : ∀ f : (α → ℚ), f ≥ 0 → expectation f ≥ 0
   additive : ∀ f g : (α → ℚ), expectation (f + g) = expectation f + expectation g
@@ -58,7 +58,7 @@ structure QProb (α : Type) where
 
 -- Let's try to create a monad instance directly
 
-instance : Monad QProb where
+instance : Monad random where
   pure x := {
     expectation := fun f ↦ f x
     nonnegative := by
@@ -79,19 +79,19 @@ instance : Monad QProb where
       exact h
     additive := by
       intros g h
-      simp only [QProb.additive]
+      simp only [random.additive]
       apply μ.additive
     normalized := by
       conv =>
         dsimp only
         lhs
-        pattern QProb.expectation (f _) fun _ ↦ 1
+        pattern random.expectation (f _) fun _ ↦ 1
         rw [(f x).normalized]
       apply μ.normalized
   }
 
 
-def UniformDist (support : Finset α) : QProb α where
+def UniformDist (support : Finset α) : random α where
   expectation (f : _) := ∑ x in support, (f x) / support.card
   nonnegative := by
     sorry
@@ -101,14 +101,14 @@ def UniformDist (support : Finset α) : QProb α where
     sorry
 
 
-def Bernoulli (p : ℚ) (nonneg : 0 ≤ p) (lt_one : p ≤ 1) : QProb Bool where
+def Bernoulli (p : ℚ) (nonneg : 0 ≤ p) (lt_one : p ≤ 1) : random Bool where
   expectation (f : Bool → ℚ):= p * (f True) + (1-p) * (f False)
   nonnegative := by sorry
   additive := by sorry
   normalized := by sorry
 
 
-def IID (μ : QProb α) (n : ℕ) : QProb (List α) :=
+def IID (μ : random α) (n : ℕ) : random (List α) :=
   if n = 0 then
     pure []
   else do
@@ -117,7 +117,7 @@ def IID (μ : QProb α) (n : ℕ) : QProb (List α) :=
     return l.append [x]
 
 
-def ProbabilityOf (event : QProb Bool) : ℚ := event.expectation (fun x ↦ if x then 1 else 0)
+def Probability (event : random Bool) : ℚ := event.expectation (fun x ↦ if x then 1 else 0)
 
 
 
@@ -127,7 +127,7 @@ def ProbabilityOf (event : QProb Bool) : ℚ := event.expectation (fun x ↦ if 
 
 def numberRange : ℕ := 100
 
-def RandomNumberDividesAnother : QProb Bool := do
+def RandomNumberDividesAnother : random Bool := do
   let x <- UniformDist (Finset.range numberRange)
   let y <- UniformDist (Finset.range numberRange)
   return x % y = 0
@@ -137,74 +137,88 @@ def RandomNumberDividesAnother : QProb Bool := do
 
 -- *B. Probability that out of 4 people, two have the same month of birth.*
 
-def numberOfPeople : ℕ := 4
+def numberOfPeople := 3
 
-def TwoPeopleWithSameMonthOfBirth : QProb Bool := do
-  let l <- IID (UniformDist (Finset.range 12)) numberOfPeople
+-- What's the probability that among three people, two of them were born in the same quarter of the year?
+def twoPeopleWithSameQuarterOfBirth : random Bool := do
+  let l <- IID (UniformDist (Finset.range 4)) numberOfPeople
   return ∃ i j : (Fin numberOfPeople), l[i]! = l[j]! ∧ i ≠ j
 
--- #eval ProbabilityOf TwoPeopleWithSameMonthOfBirth
+-- #eval Probability twoPeopleWithSameMonthOfBirth
+
+theorem BirthdayParadox : Probability twoPeopleWithSameQuarterOfBirth = 5/8 := by rfl
+
 
 
 -- *Conditionals*
 
-def conditionExpectation (μ : QProb (α × Bool)) (f : α → ℚ) : QProb ℚ := do
-  let (x, A) <- μ
-  if A then
-    return (f x) / ProbabilityOf (pure A)
-      else
-    return 0
 
-
-def condition (μ : QProb (α × Bool)) : QProb α where
-  expectation (f : α → ℚ) := (conditionExpectation μ f).expectation id -- wrong implementation!
-  nonnegative := by
-    sorry
-  additive := by
-    sorry
-  normalized := by
-    sorry
-
-
-def RandomBoolPairAnd (μ : QProb (Bool × Bool)) : QProb Bool := do
+def RandomBoolPairAnd (μ : random (Bool × Bool)) : random Bool := do
   let (p, q) <- μ
   return p ∧ q
 
-def RandomBoolPairSecond (μ : QProb (Bool × Bool)) : QProb Bool := do
-  let (p, q) <- μ
+def RandomBoolPairSecond (μ : random (Bool × Bool)) : random Bool := do
+  let (_ , q) <- μ
   return q
 
-def condProb (μ : QProb (Bool × Bool)) : ℚ := ProbabilityOf (RandomBoolPairAnd μ) / ProbabilityOf (RandomBoolPairSecond μ)
+def condProb (μ : random (Bool × Bool)) : ℚ := Probability (RandomBoolPairAnd μ) / Probability (RandomBoolPairSecond μ)
 
-lemma nonnegative_of_condProb (μ : QProb (Bool × Bool)) : condProb μ ≥ 0 := by sorry
+lemma nonneg_of_prob (μ : random Bool) : Probability μ ≥ 0 := by
+  apply μ.nonnegative
+  simp only [ge_iff_le]
+  refine Pi.le_def.mpr ?_
+  intro x
+  positivity
 
-lemma lt_one_of_condProb (μ : QProb (Bool × Bool)) : condProb μ ≤ 1 := by sorry
+lemma prob_and_le_prob_second (μ : random (Bool × Bool)) : Probability (RandomBoolPairAnd μ) ≤ Probability (RandomBoolPairSecond μ) := by
+  -- apply?
+  sorry
+
+lemma nonnegative_of_condProb (μ : random (Bool × Bool)) : condProb μ ≥ 0 := by
+  refine LE.le.ge ?h
+  apply div_nonneg
+  apply nonneg_of_prob
+  apply nonneg_of_prob
+
+lemma lt_one_of_condProb (μ : random (Bool × Bool)) : condProb μ ≤ 1 := by
+  let a := Probability (RandomBoolPairAnd μ)
+  let b := Probability (RandomBoolPairSecond μ)
+  have h1 : condProb μ = a / b := rfl
+  rw [h1, div_le_one_iff]
+  have h2 : a ≤ b := by apply prob_and_le_prob_second
+  have h3 : ¬(b < 0) := by simp [nonneg_of_prob]
+  simp only [h2, and_true, h3, false_and, or_false]
+  refine LE.le.gt_or_eq ?h
+  simp only [nonneg_of_prob]
 
 
-def conditionally (μ : QProb (Bool × Bool)) : QProb Bool :=
+def conditionally (μ : random (Bool × Bool)) : random Bool :=
   Bernoulli (condProb μ) (nonnegative_of_condProb μ) (lt_one_of_condProb μ)
 
 
 notation:10 lhs:10 "|" rhs:11 => (lhs, rhs)
 
-def Test3 : QProb Bool := conditionally do
+def Test3 : random Bool := conditionally do
   let x <- UniformDist (Finset.range 6)
   return x = 3 | x % 2 = 1 ∧ x < 5
 
 
 -- #eval ProbabilityOf Test3
 
-def winCadillac : QProb Bool := conditionally do
+def winCar : random Bool := conditionally do -- Define event "winCar" conditionally.
   let carDoor <- UniformDist (Finset.range 3) -- A car is placed uniformly at random behind one of three doors.
-  let initialDoor <- UniformDist (Finset.range 3) -- I choose a door, uniformly at random.
-  let montysDoor <- UniformDist ((Finset.range 3) \ {carDoor, initialDoor}) -- Monty Hall picks a door (neither my initially chosen door, nor the one with the car).
-  return carDoor = 1 | initialDoor = 0 ∧ montysDoor = 2 -- The event that the car is behind Door 1, given that I chose Door 0, and Monty Door 2.
+  let initialDoor <- UniformDist (Finset.range 3) -- You choose a door, uniformly at random.
+  let montysDoor <- UniformDist ((Finset.range 3) \ {carDoor, initialDoor}) -- Monty Hall picks a door (neither your initially chosen door, nor the one with the car).
+  return carDoor = 1 | initialDoor = 0 ∧ montysDoor = 2 -- The event that the car is behind Door 1, given that you chose Door 0, and Monty Door 2.
 
-#eval ProbabilityOf winCadillac
+theorem MontyHallProblem : Probability winCar = 2/3 := by rfl
+
+
+def tests := random
+-- #eval ProbabilityOf winCadillac
 
 -- TODO :
--- 0. Clean up, change notation for conditional? (Perhaps a bit dangerous?)
---    Finish Monty Hall problem example.
+-- 0. Clean up.
 -- 1. finish proofs
 -- 2. maybe change example A. to ask for coprime-ness?
 -- 3. conditioning
