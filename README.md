@@ -12,7 +12,7 @@ def totalValueIsThree : random Bool := conditionally do -- Define event "totalVa
 theorem rollingDice : Probability totalValueIsThree = 2/15 := by rfl
 ```
 
-In such a do block, "random variables" become simply dummy variable in a local context -- no need to fix a "background probability space" as usually done
+In such a do block, "random variables" become simply dummy variables in a local context -- no need to fix a "background probability space" as usually done
 in classical probability theory to work with random variables. 
 
 The capability of computing conditional probabilities "automatically", by merely specifying a model, also illustrates the basic idea of a probabilistic programming language.
