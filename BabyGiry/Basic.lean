@@ -46,17 +46,47 @@ instance : Monad random where
       apply μ.normalized
   }
 
-def UniformDist (support : Finset α) : random α where
+def UniformDist -- Thanks to Matt Diamond for adding nonemptyness assumption and filling in sorries.
+  (support : Finset α)
+  (support_nonempty : support.Nonempty := by decide)
+  : random α
+where
   expectation (f : _) := ∑ x in support, (f x) / support.card
-  nonnegative := by sorry
-  additive := by sorry
-  normalized := by sorry
+  nonnegative := by
+    intros f hf
+    apply sum_nonneg
+    intros i _
+    exact div_nonneg (hf i) (Nat.cast_nonneg _)
+  additive := by
+    intros f g
+    have : (support.card : ℚ) ≠ 0 :=
+      by simpa using support_nonempty.card_pos.ne'
+    simp_rw [← sum_div, div_add_div_same, div_left_inj' this]
+    exact sum_add_distrib
+  normalized := by
+    beta_reduce
+    have : (support.card : ℚ) ≠ 0 :=
+      by simpa using support_nonempty.card_pos.ne'
+    rw [one_div, sum_const, nsmul_eq_mul]
+    exact Rat.mul_inv_cancel _ this
+
+def UniformInRange (n : ℕ) (nonzero : n ≠ 0 := by decide) : random ℕ :=
+  UniformDist (Finset.range n) (by simpa using nonzero)
 
 def Bernoulli (p : ℚ) (nonneg : 0 ≤ p) (lt_one : p ≤ 1) : random Bool where
   expectation (f : Bool → ℚ):= p * (f True) + (1-p) * (f False)
-  nonnegative := by sorry
-  additive := by sorry
-  normalized := by sorry
+  nonnegative := by
+    intro f hf
+    simp only [decide_True, decide_False, ge_iff_le]
+    have h1 : 0 ≤ (1-p) := by linarith
+    have h2 : 0 ≤ f true := by apply hf
+    have h3 : 0 ≤ f false := by apply hf
+    positivity
+  additive := by
+    intros f g
+    simp only [decide_True, Pi.add_apply, decide_False]
+    ring
+  normalized := by ring
 
 def IID (μ : random α) (n : ℕ) : random (List α) :=
   if n = 0 then
