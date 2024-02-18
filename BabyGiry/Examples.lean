@@ -2,9 +2,9 @@ import BabyGiry.Basic
 
 -- *Coprimality of Random Numbers*
 
-def randomNumbersCoprime (n : ℕ) (nonzero : n ≠ 0 := by decide) : random Bool := do
-  let x <- UniformInRange n nonzero -- Let x be uniformly distributed on {0, ..., n-1}.
-  let y <- UniformInRange n nonzero -- Let y be uniformly distributed on {0, ..., n-1} (independently).
+def randomNumbersCoprime (n : ℕ) : random Bool := do
+  let x <- UniformDist (Finset.range n) -- Let x be uniformly distributed on {0, ..., n-1}.
+  let y <- UniformDist (Finset.range n) -- Let y be uniformly distributed on {0, ..., n-1} (independently).
   return Nat.gcd x y = 1 -- The event that x and y are coprime.
 
 -- #eval Probability (randomNumbersCoprime 10)
@@ -16,10 +16,10 @@ theorem coprimeProbability : Probability (randomNumbersCoprime 10) = 57/100 := b
 
 -- What's the probability that among three people, two of them were born in the same quarter of the year?
 def twoPeopleWithSameQuarterOfBirth : random Bool := do
-  let l <- IID (UniformDist (Finset.range 4)) 3
+  let l <- IID (UniformDist {1, 2, 3, 4}) 3
   return ∃ i j : (Fin 3), l[i]! = l[j]! ∧ i ≠ j
 
--- #eval Probability twoPeopleWithSameMonthOfBirth
+-- #eval Probability twoPeopleWithSameQuarterOfBirth
 
 theorem BirthdayParadox : Probability twoPeopleWithSameQuarterOfBirth = 5/8 := by rfl
 
@@ -37,7 +37,7 @@ theorem rollingDice : Probability totalValueIsThree = 2/15 := by rfl
 def winCar : random Bool := conditionally do -- Define event "winCar" conditionally.
   let carDoor <- UniformDist (Finset.range 3) -- A car is placed uniformly at random behind one of three doors.
   let initialDoor <- UniformDist (Finset.range 3) -- You choose a door, uniformly at random.
-  let montysDoor <- UniformDist ((Finset.range 3) \ {carDoor, initialDoor}) sorry -- Monty Hall picks a door (neither your initially chosen door, nor the one with the car).
+  let montysDoor <- UniformDist ((Finset.range 3) \ {carDoor, initialDoor}) -- Monty Hall picks a door (neither your initially chosen door, nor the one with the car).
   return carDoor = 1 | initialDoor = 0 ∧ montysDoor = 2 -- The event that the car is behind Door 1, given that you chose Door 0, and Monty Door 2.
 
 theorem MontyHallProblem : Probability winCar = 2/3 := by rfl
