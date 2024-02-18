@@ -5,11 +5,11 @@ events using "conditionally do" blocks of the form:
 
 ```lean
 def totalValueIsThree : random Bool := conditionally do -- Define event "totalValueIs3" conditionally.
-  let x <- UniformDist (Finset.range 6) -- Roll a die.
-  let y <- UniformDist (Finset.range 6) -- Roll another one.
+  let x <- UniformDist {1, 2, 3, 4, 5, 6} -- Roll a die.
+  let y <- UniformDist {1, 2, 3, 4, 5, 6} -- Roll another one.
   return x + y = 3 | x % 2 = 1 ∧ y < 5 -- Their total value is three, given that x is odd, and y less than five.
 
-theorem rollingDice : Probability totalValueIsThree = 2/15 := by rfl
+theorem rollingDice : Probability totalValueIsThree = 1/12 := by rfl
 ```
 
 In such a do block, "random variables" become simply dummy variables in a local context -- no need to fix a "background probability space" as usually done
