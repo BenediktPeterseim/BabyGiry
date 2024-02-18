@@ -35,9 +35,9 @@ theorem rollingDice : Probability totalValueIsThree = 1/12 := by rfl
 -- *Monty Hall Prolem*
 
 def winCar : random Bool := conditionally do -- Define event "winCar" conditionally.
-  let carDoor <- UniformDist (Finset.range 3) -- A car is placed uniformly at random behind one of three doors.
-  let initialDoor <- UniformDist (Finset.range 3) -- You choose a door, uniformly at random.
-  let montysDoor <- UniformDist ((Finset.range 3) \ {carDoor, initialDoor}) -- Monty Hall picks a door (neither your initially chosen door, nor the one with the car).
-  return carDoor = 1 | initialDoor = 0 ∧ montysDoor = 2 -- The event that the car is behind Door 1, given that you chose Door 0, and Monty Door 2.
+  let carDoor <- UniformDist {1, 2, 3} -- A car is placed uniformly at random behind one of three doors.
+  let initialDoor <- UniformDist {1, 2, 3} -- You choose a door, uniformly at random.
+  let montysDoor <- UniformDist ({1, 2, 3} \ {carDoor, initialDoor}) -- Monty Hall picks a door (neither your initially chosen door, nor the one with the car).
+  return carDoor = 2 | initialDoor = 1 ∧ montysDoor = 3 -- The event that the car is behind Door 2 (switching), given that you chose Door 1, and Monty Door 3.
 
 theorem MontyHallProblem : Probability winCar = 2/3 := by rfl
