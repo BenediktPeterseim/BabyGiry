@@ -238,10 +238,9 @@ def conditionally (μ : random (Bool × Bool)) : random Bool :=
 
 notation:10 lhs:10 "|" rhs:11 => (lhs, rhs)  -- notation used for conditional probability (see Examples.lean)
 
--- TODO :
--- 1. Change UniformDist so that it consumes a [Nonempty α] and remove Finset.nonemepty argument,
---    instead returning a point mass at a default element if the given Finset is empty.
--- 2. Define law (μ : random α) (p : α → Bool) : ℚ := μ.expectation (fun x ↦ if p x then 1 else 0)
--- 3. Define condLaw ( : ) : ...
--- 4. Think about how to prove remaining sorry, possibly redefining CondProb using condLaw
--- 5. Make Functor instance for monad and redefine contitional probability without do notation.
+-- Allows writing ℙ[p x | q x, x ~ μ] for CondLaw μ p q.
+notation "ℙ[" p:20 "|" q ", " x " ~ " mu "]" => CondLaw mu (fun x => p) (fun x => q)
+
+-- Example usage:
+-- def μ := UniformDist {(0, 1), (1, 0), (2, 3), (1, 1)}
+-- #eval ℙ[x = 1 ∧ y > 0 | x > 0, (x, y) ~ μ]
