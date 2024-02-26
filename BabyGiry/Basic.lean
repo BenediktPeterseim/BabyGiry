@@ -76,12 +76,15 @@ where
       exact Rat.mul_inv_cancel _ this
     · simp only
 
-def Bernoulli (p : ℚ) (nonneg : 0 ≤ p) (lt_one : p ≤ 1) : random Bool where
-  expectation (f : Bool → ℚ):= p * (f True) + (1-p) * (f False)
+
+def Bernoulli (q : ℚ) : random Bool where
+  expectation (f : Bool → ℚ) := let p := max (min q 1) 0; p * (f True) + (1-p) * (f False)
   nonnegative := by
     intro f hf
-    simp only [decide_True, decide_False, ge_iff_le]
-    have h1 : 0 ≤ (1-p) := by linarith
+    simp
+    let p := max (min q 1) 0
+    have h1 : 0 ≤ (1-p) := by simp only [ge_iff_le, le_min_iff, zero_le_one, and_true, min_le_iff,
+      sub_nonneg, max_le_iff, le_refl, or_true, and_self]
     have h2 : 0 ≤ f true := by apply hf
     have h3 : 0 ≤ f false := by apply hf
     positivity
@@ -233,8 +236,7 @@ def CondProb_nonneg (μ : random (Bool × Bool)) : CondProb μ ≥ 0 := by apply
 
 def CondProb_lt_one (μ : random (Bool × Bool)) : CondProb μ ≤ 1 := by apply CondLaw_lt_one
 
-def conditionally (μ : random (Bool × Bool)) : random Bool :=
-  Bernoulli (CondProb μ) (CondProb_nonneg μ) (CondProb_lt_one μ)
+def conditionally (μ : random (Bool × Bool)) : random Bool := Bernoulli (CondProb μ)
 
 notation:10 lhs:10 "|" rhs:11 => (lhs, rhs)  -- notation used for conditional probability (see Examples.lean)
 

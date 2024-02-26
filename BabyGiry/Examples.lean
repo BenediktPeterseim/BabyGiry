@@ -41,3 +41,22 @@ def winCar : random Bool := conditionally do -- Define event "winCar" conditiona
   return carDoor = 2 | initialDoor = 1 ∧ montysDoor = 3 -- The event that the car is behind Door 2 (switching), given that you chose Door 1, and Monty Door 3.
 
 theorem MontyHallProblem : Probability winCar = 2/3 := by rfl
+
+-- *GMAT Example Problem*
+
+def nextThrow (lastThrowSuccess : Bool) : random Bool := do
+  let nextThrowIfSuccess <- Bernoulli ((8 : ℚ)/10)
+  let nextThrowIfFail <- Bernoulli ((4 : ℚ)/10)
+  return if lastThrowSuccess then nextThrowIfSuccess else nextThrowIfFail
+
+def FourBasketsInFiveThrows : random Bool := do
+  let firstThrowSuccess <- Bernoulli ((6 : ℚ)/10) -- 6/10 chance on the first free throw.
+  let mut numberOfSuccesses := if firstThrowSuccess then 1 else 0 -- Initialise number of baskets.
+  let mut CurrentThrowSuccess := firstThrowSuccess
+  for _ in [0:4] do -- After her first free throw, there are four more.
+    CurrentThrowSuccess <- nextThrow CurrentThrowSuccess
+    numberOfSuccesses := if CurrentThrowSuccess then numberOfSuccesses + 1 else numberOfSuccesses
+  return numberOfSuccesses ≥ 4 -- Player makes at least four baskets.
+
+-- #eval (Probability FourBasketsInFiveThrows)
+-- 1504/3125
