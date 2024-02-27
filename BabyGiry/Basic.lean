@@ -225,7 +225,7 @@ lemma CondLaw_lt_one (μ : random α) (p : α → Bool) (q : α → Bool) : Cond
   have h1 : CondLaw μ p q = a / b := rfl
   rw [h1, div_le_one_iff]
   have h2 : a ≤ b := by apply CondLaw_and_lt_proj
-  have h3 : ¬(b < 0) := by simp [Law_nonneg]
+  have h3 : ¬(b < 0) := by simp only [not_lt, Law_nonneg]
   simp only [h2, and_true, h3, false_and, or_false]
   refine LE.le.gt_or_eq ?h
   apply Law_nonneg
