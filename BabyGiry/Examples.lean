@@ -58,5 +58,15 @@ def FourBasketsInFiveThrows : random Bool := do
     numberOfSuccesses := if CurrentThrowSuccess then numberOfSuccesses + 1 else numberOfSuccesses
   return numberOfSuccesses ≥ 4 -- Player makes at least four baskets.
 
--- #eval (Probability FourBasketsInFiveThrows)
+-- #eval Probability FourBasketsInFiveThrows
 -- 1504/3125
+
+-- *Bayesian Inference*
+
+def coinFair : random Bool := conditionally do
+  let p <- UniformDist {((0 : ℚ)/4), ((1 : ℚ)/4), ((2 : ℚ)/4), ((3 : ℚ)/4), ((4 : ℚ)/4)}
+  let observations <- IID (Bernoulli p) 3
+  return p = 1/2 | observations = [true, false, false]
+
+-- #eval Probability coinFair
+-- 2/5

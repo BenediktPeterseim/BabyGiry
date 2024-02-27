@@ -240,9 +240,12 @@ def conditionally (μ : random (Bool × Bool)) : random Bool := Bernoulli (CondP
 
 notation:10 lhs:10 "|" rhs:11 => (lhs, rhs)  -- notation used for conditional probability (see Examples.lean)
 
+-- Allows writing ℙ[p x | x ~ μ] for Law μ p.
+notation "ℙ[" p:20 "|" x " ~ " mu "]" => Law mu (fun x => p)
 -- Allows writing ℙ[p x | q x, x ~ μ] for CondLaw μ p q.
 notation "ℙ[" p:20 "|" q ", " x " ~ " mu "]" => CondLaw mu (fun x => p) (fun x => q)
 
 -- Example usage:
--- def μ := UniformDist {(0, 1), (1, 0), (2, 3), (1, 1)}
--- #eval ℙ[x = 1 ∧ y > 0 | x > 0, (x, y) ~ μ]
+def μ := UniformDist {(0, 1), (1, 0), (2, 3), (1, 1)}
+example : ℙ[x = 1 ∧ y > 0 | x > 0, (x, y) ~ μ] = 1/3 := by rfl
+example : ℙ[x + y = 5 | (x, y) ~ μ] = 1/4 := by rfl
