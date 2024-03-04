@@ -1,12 +1,31 @@
+/-
+Copyright (c) 2024 Benedikt Peterseim. All rights reserved.
+Author: Benedikt Peterseim
+-/
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Rat.Basic
 import Mathlib.Algebra.BigOperators.Basic
 import Mathlib.Tactic
 
+/-!
+# Baby Giry: A Monad for Elementary Probability in Lean
+
+## Main Definitions:
+
+- The `BabyGiry.Random` monad is the monad from the title. It is defined
+  via rational-valued positive linear functionals, which enables a constructive
+  treatment. This is only effective for small sample spaces, but already
+  illustrates the basic ideas behind probability monads and probabilistic programming.
+- Two important example distributions, `BabyGiry.Unif` and `BabyGiry.Bernoulli` are defined.
+- `BabyGiry.Prod` is the product of probability measures, the notation ` ⊗ ` is introduced.
+- We also treat conditionals, see Examples.lean for usage.
+-/
+
+namespace BabyGiry
 
 open Finset BigOperators
 
-structure random (α : Type) where
+structure Random (α : Type) where
   expectation : (α → ℚ) → ℚ  -- expectation functional
   nonnegative : ∀ f : (α → ℚ), f ≥ 0 → expectation f ≥ 0
   additive : ∀ f g : (α → ℚ), expectation (f + g) = expectation f + expectation g
@@ -14,7 +33,7 @@ structure random (α : Type) where
 
 -- Let's try to create a monad instance directly
 
-instance : Monad random where
+instance : Monad Random where
   pure x := {
     expectation := fun f ↦ f x
     nonnegative := by
@@ -35,21 +54,21 @@ instance : Monad random where
       exact h
     additive := by
       intros g h
-      simp only [random.additive]
+      simp only [Random.additive]
       apply μ.additive
     normalized := by
       conv =>
         dsimp only
         lhs
-        pattern random.expectation (f _) fun _ ↦ 1
+        pattern Random.expectation (f _) fun _ ↦ 1
         rw [(f x).normalized]
       apply μ.normalized
   }
 
-def UniformDist -- Thanks to Matt Diamond for adding nonemptyness assumption and filling in sorries.
+def Unif -- Thanks to Matt Diamond for adding nonemptyness assumption and filling in sorries.
   [Inhabited α]
   (support : Finset α)
-  : random α
+  : Random α
 where
   expectation (f : _) := if support.Nonempty then ∑ x in support, (f x) / support.card else f default
   nonnegative := by
@@ -77,7 +96,7 @@ where
     · simp only
 
 
-def Bernoulli (q : ℚ) : random Bool where
+def Bernoulli (q : ℚ) : Random Bool where
   expectation (f : Bool → ℚ) := let p := max (min q 1) 0; p * (f True) + (1-p) * (f False)
   nonnegative := by
     intro f hf
@@ -94,7 +113,7 @@ def Bernoulli (q : ℚ) : random Bool where
     ring
   normalized := by ring
 
-def IID (μ : random α) (n : ℕ) : random (List α) :=
+def IID (μ : Random α) (n : ℕ) : Random (List α) :=
   if n = 0 then
     pure []
   else do
@@ -102,7 +121,7 @@ def IID (μ : random α) (n : ℕ) : random (List α) :=
     let x <- μ
     return l.append [x]
 
-def Probability (event : random Bool) : ℚ := event.expectation (fun x ↦ if x then 1 else 0)
+def Probability (event : Random Bool) : ℚ := event.expectation (fun x ↦ if x then 1 else 0)
 
 noncomputable
 def indicator (A : Set α) (x : α) : ℚ :=
@@ -123,21 +142,21 @@ by
     apply Eq.refl
   · exact Set.disjoint_iff_inter_eq_empty.mpr disjoint
 
-def Law (μ : random α) (p : α → Bool) : ℚ := μ.expectation (fun x ↦ if p x then 1 else 0)
+def Law (μ : Random α) (p : α → Bool) : ℚ := μ.expectation (fun x ↦ if p x then 1 else 0)
 
 -- A version of Law ignoring decidability.
 noncomputable
-def Law' (μ : random α) (A : Set α) : ℚ :=
+def Law' (μ : Random α) (A : Set α) : ℚ :=
   -- have (x : α) : Decidable (A x) := Classical.dec (A x)
   μ.expectation (Set.indicator (M := ℚ) A (fun _ ↦ 1))
 
-lemma Law'_eq_Law (μ : random α) (p : α → Bool) : Law μ p = Law' μ {x | p x} := by
+lemma Law'_eq_Law (μ : Random α) (p : α → Bool) : Law μ p = Law' μ {x | p x} := by
   have h : (fun x ↦ if p x then 1 else 0) = (Set.indicator (M := ℚ) {x | p x} (fun _ ↦ 1)) := by aesop
   unfold Law
   rw [h]
   rfl
 
-lemma Law'_nonneg (μ : random α) (A : Set α) : 0 ≤ Law' μ A := by
+lemma Law'_nonneg (μ : Random α) (A : Set α) : 0 ≤ Law' μ A := by
   apply μ.nonnegative
   simp
   have h0 (x : α) : Set.indicator (M := ℚ) A (fun _ ↦ 1) x = 0 ∨ Set.indicator (M := ℚ) A (fun _ ↦ 1) x = (fun _ ↦ 1) x := by
@@ -150,7 +169,7 @@ lemma Law'_nonneg (μ : random α) (A : Set α) : 0 ≤ Law' μ A := by
   | inr h => positivity
 
 lemma Law'_additive
-  (μ : random α)
+  (μ : Random α)
   (A B : Set α)
   (disjoint : A ∩ B = ∅)
   : Law' μ (A ∪ B) = Law' μ A + Law' μ B :=
@@ -161,7 +180,7 @@ by
   exact disjoint
 
 lemma Law'_monotone
-  (μ : random α)
+  (μ : Random α)
   (A B : Set α)
   (A_subseteq_B : A ⊆ B)
   : Law' μ A ≤ Law' μ B :=
@@ -176,25 +195,25 @@ by
   apply Law'_nonneg
   exact disjoint
 
-lemma Law'_univ_eq_one (μ : random α) : Law' μ Set.univ = 1 := by
+lemma Law'_univ_eq_one (μ : Random α) : Law' μ Set.univ = 1 := by
   unfold Law'
   simp only [Set.indicator_univ]
   apply μ.normalized
 
-lemma Law'_lt_one (μ : random α) (A : Set α) : Law' μ A ≤ 1 := by
+lemma Law'_lt_one (μ : Random α) (A : Set α) : Law' μ A ≤ 1 := by
   rw [←Law'_univ_eq_one μ]
   apply Law'_monotone
   simp_all only [Set.subset_univ]
 
-lemma Law_nonneg (μ : random α) (p : α → Bool) : Law μ p ≥ 0 := by
+lemma Law_nonneg (μ : Random α) (p : α → Bool) : Law μ p ≥ 0 := by
   rw [Law'_eq_Law]
   apply Law'_nonneg
 
-lemma Law_lt_one (μ : random α) (p : α → Bool) : Law μ p ≤ 1 := by
+lemma Law_lt_one (μ : Random α) (p : α → Bool) : Law μ p ≤ 1 := by
   rw [Law'_eq_Law]
   apply Law'_lt_one
 
-lemma Law_monotone (μ : random α) (p q : α → Bool) (p_lt_q : p ≤ q) : Law μ p ≤ Law μ q := by
+lemma Law_monotone (μ : Random α) (p q : α → Bool) (p_lt_q : p ≤ q) : Law μ p ≤ Law μ q := by
   rw [Law'_eq_Law]
   rw [Law'_eq_Law]
   apply Law'_monotone
@@ -202,15 +221,15 @@ lemma Law_monotone (μ : random α) (p q : α → Bool) (p_lt_q : p ≤ q) : Law
 
 -- *Conditionals*
 
-def CondLaw (μ : random α) (p : α → Bool) (q : α → Bool) : ℚ := Law μ (fun x ↦ (p x ∧ q x)) / Law μ q
+def CondLaw (μ : Random α) (p : α → Bool) (q : α → Bool) : ℚ := Law μ (fun x ↦ (p x ∧ q x)) / Law μ q
 
-lemma CondLaw_nonneg (μ : random α) (p : α → Bool) (q : α → Bool) : CondLaw μ p q ≥ 0 := by
+lemma CondLaw_nonneg (μ : Random α) (p : α → Bool) (q : α → Bool) : CondLaw μ p q ≥ 0 := by
   apply div_nonneg
   apply Law_nonneg
   apply Law_nonneg
 
 lemma CondLaw_and_lt_proj
-  (μ : random α) (p : α → Bool) (q : α → Bool)
+  (μ : Random α) (p : α → Bool) (q : α → Bool)
   : Law μ (fun x ↦ (p x ∧ q x)) ≤ Law μ q :=
 by
   apply Law_monotone
@@ -219,7 +238,7 @@ by
   simp only [Bool.decide_and, Bool.decide_coe]
   exact Bool.and_le_right (p x) (q x)
 
-lemma CondLaw_lt_one (μ : random α) (p : α → Bool) (q : α → Bool) : CondLaw μ p q ≤ 1 := by
+lemma CondLaw_lt_one (μ : Random α) (p : α → Bool) (q : α → Bool) : CondLaw μ p q ≤ 1 := by
   let a := Law μ (fun x ↦ (p x ∧ q x))
   let b := Law μ q
   have h1 : CondLaw μ p q = a / b := rfl
@@ -230,13 +249,13 @@ lemma CondLaw_lt_one (μ : random α) (p : α → Bool) (q : α → Bool) : Cond
   refine LE.le.gt_or_eq ?h
   apply Law_nonneg
 
-def CondProb (μ : random (Bool × Bool)) : ℚ := CondLaw μ (fun (x, y) ↦ x ∧ y) (fun (_, y) ↦ y)
+def CondProb (μ : Random (Bool × Bool)) : ℚ := CondLaw μ (fun (x, y) ↦ x ∧ y) (fun (_, y) ↦ y)
 
-def CondProb_nonneg (μ : random (Bool × Bool)) : CondProb μ ≥ 0 := by apply CondLaw_nonneg
+def CondProb_nonneg (μ : Random (Bool × Bool)) : CondProb μ ≥ 0 := by apply CondLaw_nonneg
 
-def CondProb_lt_one (μ : random (Bool × Bool)) : CondProb μ ≤ 1 := by apply CondLaw_lt_one
+def CondProb_lt_one (μ : Random (Bool × Bool)) : CondProb μ ≤ 1 := by apply CondLaw_lt_one
 
-def conditionally (μ : random (Bool × Bool)) : random Bool := Bernoulli (CondProb μ)
+def conditionally (μ : Random (Bool × Bool)) : Random Bool := Bernoulli (CondProb μ)
 
 notation:10 lhs:10 "|" rhs:11 => (lhs, rhs)  -- notation used for conditional probability (see Examples.lean)
 
@@ -246,6 +265,36 @@ notation "ℙ[" p:20 "|" x " ~ " mu "]" => Law mu (fun x => p)
 notation "ℙ[" p:20 "|" q ", " x " ~ " mu "]" => CondLaw mu (fun x => p) (fun x => q)
 
 -- Example usage:
-def μ := UniformDist {(0, 1), (1, 0), (2, 3), (1, 1)}
+def μ := Unif {(0, 1), (1, 0), (2, 3), (1, 1)}
 example : ℙ[x = 1 ∧ y > 0 | x > 0, (x, y) ~ μ] = 1/3 := by rfl
 example : ℙ[x + y = 5 | (x, y) ~ μ] = 1/4 := by rfl
+
+--*Products*
+
+def Prod (μ : Random α) (ν : Random β) : Random (α × β) := do
+  let x <- μ
+  let y <- ν
+  return (x, y)
+
+infix:80 " ⊗ " => Prod
+
+-- example usage
+example : ℙ[x + y = 9 | x ≥ 2,
+  (x, y) ~ (Unif {1, 2, 3, 4, 5, 6}) ⊗ (Unif {1, 2, 3, 4, 5, 6})]
+  = 2/15 := by rfl
+
+--*Probabilistic programming style do notation*
+
+def CondRandom (α : Type) : Type := Random (α × Bool)
+
+/-!
+TODO:
+- define monad for Random (_ × Bool)
+- define "observe" statement, as in probabilistic programming languages,
+  cf. Bart Jacobs's papers
+- (re-)define "conditionally accordingly"
+-/
+
+--instance : Monad CondRandom where
+--  pure x := sorry
+--  bind := sorry

@@ -4,12 +4,12 @@ This project aims to demonstrate how to "do probability with monads" using a sim
 events using "conditionally do" blocks of the form:
 
 ```lean
-def totalValueIsThree : random Bool := conditionally do -- Define event "totalValueIs3" conditionally.
-  let x <- UniformDist {1, 2, 3, 4, 5, 6} -- Roll a die.
-  let y <- UniformDist {1, 2, 3, 4, 5, 6} -- Roll another one.
-  return x + y = 3 | x % 2 = 1 ∧ y < 5 -- Their total value is three, given that x is odd, and y less than five.
+def totalValueIsNine : Random Bool := conditionally do -- Define event "totalValueIsNine" conditionally.
+  let x <- Unif {1, 2, 3, 4, 5, 6} -- Roll a die.
+  let y <- Unif {1, 2, 3, 4, 5, 6} -- Roll another one.
+  return x + y = 9 | x ≥ 2 -- Their total value is nine, given that x is at least two.
 
-theorem rollingDice : Probability totalValueIsThree = 1/12 := by rfl
+example : Probability totalValueIsNine = 2/15 := by rfl
 ```
 
 In such a do block, "random variables" become simply dummy variables in a local context -- no need to fix a "background probability space" as usually done
