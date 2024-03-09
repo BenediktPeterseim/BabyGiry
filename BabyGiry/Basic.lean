@@ -13,12 +13,14 @@ import Mathlib.Tactic
 ## Main Definitions:
 
 - The `BabyGiry.Random` monad is the monad from the title. It is defined
-  via rational-valued positive linear functionals, which enables a constructive
+  via rational-valued positive linear functionals, which enables a computable
   treatment. This is only effective for small sample spaces, but already
   illustrates the basic ideas behind probability monads and probabilistic programming.
-- Two important example distributions, `BabyGiry.Unif` and `BabyGiry.Bernoulli` are defined.
+- Three important example distributions, `BabyGiry.Unif`, `BabyGiry.Bernoulli`
+  and `BabyGiry.Binomial` are defined.
 - `BabyGiry.Prod` is the product of probability measures, the notation ` ⊗ ` is introduced.
-- We also treat conditionals, see Examples.lean for usage.
+- We also treat conditionals and a probabilistic programming style `randomly do` notation
+  including an `observe` statement to condition on events, see Examples.lean for usage.
 -/
 
 namespace BabyGiry
@@ -31,7 +33,6 @@ structure Random (α : Type) where
   additive : ∀ f g : (α → ℚ), expectation (f + g) = expectation f + expectation g
   normalized : expectation (fun _ ↦ 1) = 1
 
--- Let's try to create a monad instance directly
 
 instance : Monad Random where
   pure x := {
@@ -65,11 +66,8 @@ instance : Monad Random where
       apply μ.normalized
   }
 
-def Unif -- Thanks to Matt Diamond for adding nonemptyness assumption and filling in sorries.
-  [Inhabited α]
-  (support : Finset α)
-  : Random α
-where
+
+def Unif [Inhabited α] (support : Finset α) : Random α where
   expectation (f : _) := if support.Nonempty then ∑ x in support, (f x) / support.card else f default
   nonnegative := by
     intros f hf
@@ -113,6 +111,7 @@ def Bernoulli (q : ℚ) : Random Bool where
     ring
   normalized := by ring
 
+
 def IID (μ : Random α) (n : ℕ) : Random (List α) :=
   if n = 0 then
     pure []
@@ -121,6 +120,18 @@ def IID (μ : Random α) (n : ℕ) : Random (List α) :=
     let x <- μ
     return l.append [x]
 
+
+def Binomial (n : ℕ) (p : ℚ) : Random ℕ := do
+  let trials <- IID (Bernoulli p) n
+  let mut sum := 0
+  for trial in trials do
+    if trial then
+      sum := sum + 1
+  return sum
+
+
+-- *Auxiliary definitions and lemmas*
+
 def Probability (event : Random Bool) : ℚ := event.expectation (fun x ↦ if x then 1 else 0)
 
 noncomputable
@@ -128,8 +139,6 @@ def indicator (A : Set α) (x : α) : ℚ :=
   --have : Decidable (A x) := Classical.dec (A x)
   --if A x then 1 else 0
   Set.indicator (M := ℚ) A (fun _ ↦ 1) x
-
--- #check Set.indicator (M := ℚ)
 
 lemma indicator_of_disjoint_union
   (A B : Set α)
@@ -257,8 +266,6 @@ def CondProb_lt_one (μ : Random (Bool × Bool)) : CondProb μ ≤ 1 := by apply
 
 def conditionally (μ : Random (Bool × Bool)) : Random Bool := Bernoulli (CondProb μ)
 
-notation:10 lhs:10 "|" rhs:11 => (lhs, rhs)  -- notation used for conditional probability (see Examples.lean)
-
 -- Allows writing ℙ[p x | x ~ μ] for Law μ p.
 notation "ℙ[" p:20 "|" x " ~ " mu "]" => Law mu (fun x => p)
 -- Allows writing ℙ[p x | q x, x ~ μ] for CondLaw μ p q.
@@ -285,16 +292,108 @@ example : ℙ[x + y = 9 | x ≥ 2,
 
 --*Probabilistic programming style do notation*
 
-def CondRandom (α : Type) : Type := Random (α × Bool)
+def CondRandom := WriterT Bool Random
+
+instance : Monad CondRandom := WriterT.monad true Bool.and
+
+instance : Functor Random := Applicative.toFunctor
+
+def observe (p : Bool) : CondRandom Unit := WriterT.mk $ pure (⟨⟩, p)
+
+def sample (μ : Random α) : CondRandom α := WriterT.mk do
+  let x <- μ
+  return (x, true)
+
+def reject_on_condition (μ : CondRandom α) : Random (Option α) := do
+  let (x, p) <- μ
+  if p then
+    return x
+  return none
+
+def extend_to_option (f : α → ℚ) : Option α → ℚ
+  | none => 0
+  | some x => f x
+
+lemma extend_to_option_additive (f : α → ℚ) (g : α → ℚ) : extend_to_option (f + g) = extend_to_option f + extend_to_option g := by
+  unfold extend_to_option
+  funext x
+  simp only [Pi.add_apply]
+  split
+  · rfl
+  · rfl
+
+def probOfCond (μ : CondRandom α) : ℚ :=
+  (reject_on_condition μ).expectation (extend_to_option (fun _ ↦ 1))
+
+def randomly (μ : CondRandom α) : Random α where
+  expectation f :=
+    if (probOfCond μ) = 0 then
+      μ.expectation (fun (x, _) ↦ f x)
+    else
+      ((reject_on_condition μ).expectation (extend_to_option f)) / (probOfCond μ)
+  nonnegative := by
+    intros f hf
+    apply ite_nonneg
+    · apply Random.nonnegative
+      simp only [ge_iff_le]
+      refine Pi.le_def.mpr ?ha.a.a
+      intro (x, p)
+      simp only [Pi.zero_apply, ge_iff_le]
+      apply hf
+    · apply div_nonneg
+      · apply Random.nonnegative
+        apply Pi.le_def.mpr
+        intro y
+        rcases y
+        · rfl
+        · apply hf
+      · apply Random.nonnegative
+        simp only [ge_iff_le]
+        refine Pi.le_def.mpr ?hb.a.a
+        intro p
+        simp only [Pi.zero_apply]
+        unfold extend_to_option
+        split
+        · rfl
+        · rfl
+  additive := by
+    intros f g
+    simp
+    split_ifs with h
+    · apply Random.additive
+    · rw [extend_to_option_additive, Random.additive]
+      rw [← add_div]
+  normalized := by
+    beta_reduce
+    split_ifs with h
+    · apply Random.normalized
+    · field_simp
+      rfl
+
+notation "~"mu => sample $ mu
+notation "{" i ",..," j "}" => Finset.Icc i j
+
+/-- `Linspace a b` is the Finset of (N := 11) evenly spaced rationals between a and b, -/
+def Linspace (a : ℚ) (b : ℚ) (N : ℕ := 11) (hab : b - a ≠ 0 := by norm_num) (hN : (N : ℚ) - 1 ≠ 0 := by norm_num) :=
+  let f (n : ℕ) := (a + (b-a) * (n : ℚ) / (N-1))
+  have : Function.Injective f := by intros n m; field_simp; aesop
+  Finset.map ⟨f, this⟩ (Finset.range N)
+
 
 /-!
-TODO:
-- define monad for Random (_ × Bool)
-- define "observe" statement, as in probabilistic programming languages,
-  cf. Bart Jacobs's papers
-- (re-)define "conditionally accordingly"
+*TODO:*
+- create LawfulMonad instance
+- make def `independent` (List (Random α)) : Random (List α) := ...
+  --> Q: can this be used with pattern matching à la
+    let [x, y, z, w] <- independent [μ, ν, ...] ?
+- Examples for higher-order probability:
+  - ℙ[ℙ[x = 0 | x ~ f y] = 1/2 | y ~ μ]
+    e.g. rolling either one or two dice depending on coin flip.
+  - empirical measure.
+- make definition of:
+  - expectation with notation 𝔼[ f x | p x, x ~ μ]
+  - select n (s : Finset α) ~~> i.e. pick without duplicates
+    --> should have type:
+      def select (n : ℕ) (s : Finset α) : Random (List α)
+  - ...
 -/
-
---instance : Monad CondRandom where
---  pure x := sorry
---  bind := sorry

@@ -8,60 +8,76 @@ open BabyGiry
 
 -- *First Example: Rolling Dice*
 
-/-! Roll two dice. What's the probability that their total value is nine,
-given that the value of the second one is at least two? We can find the answer using:
+-- Roll two dice:
+def TwoDice := (Unif {1,..,6}) ⊗ (Unif {1,..,6})
 
-#eval ℙ[x + y = 9 | x ≥ 2,
-  (x, y) ~ (Unif {1, 2, 3, 4, 5, 6}) ⊗ (Unif {1, 2, 3, 4, 5, 6})]
-Output: (2 : Rat)/15
+/-! What's the probability that their total value is nine, given that the value of the second one is at least two?
+ We can find the answer using:
 
-The corresponding theorem is now proved "by rfl":
+#eval ℙ[n + m = 9 | n ≥ 2, (n, m) ~ TwoDice]
+.>> (2 : Rat)/15
+
+This even gives us a proof:
 -/
-example : ℙ[x + y = 9 | x ≥ 2,
-  (x, y) ~ (Unif {1, 2, 3, 4, 5, 6}) ⊗ (Unif {1, 2, 3, 4, 5, 6})]
-  = 2/15 := by rfl
+example : ℙ[n + m = 9 | n ≥ 2, (n, m) ~ TwoDice] = 2/15 := by rfl
 
 -- We can also write this using do notation.
-def totalValueIsNine : Random Bool := conditionally do -- Define event "totalValueIsNine" conditionally.
-  let x <- Unif {1, 2, 3, 4, 5, 6} -- Roll a die.
-  let y <- Unif {1, 2, 3, 4, 5, 6} -- Roll another one.
-  return x + y = 9 | x ≥ 2 -- Their total value is nine, given that x is at least two.
+def TotalValue : Random ℕ := randomly do
+  let x <-~ Unif {1,..,6} -- Roll a die.
+  let y <-~ Unif {1,..,6} -- Roll another one.
+  observe <| x ≥ 2
+  return x + y
 
-example : Probability totalValueIsNine = 2/15 := by rfl
+example : ℙ[s = 9 | s ~ TotalValue] = 2/15 := by rfl
+
+-- *Bayesian Inference*
+
+def Posterior : Random ℚ := randomly do
+  let p <-~ Unif (Linspace 0 1)
+  let k <-~ Binomial 5 p
+  observe <| k = 3
+  return p
+
+-- #eval ℙ[p ≥ 4/10 ∧ p ≤ 6/10 | p ~ Posterior]
+-- >> (1777 : Rat)/3333
+-- #eval (1777 : Float)/3333
+-- >> 0.533153
+
+example : ℙ[p ≥ 4/10 ∧ p ≤ 6/10 | p ~ Posterior] = 1777/3333 := by rfl
 
 -- *Coprimality of Random Numbers*
 
-def randomNumbersCoprime (n : ℕ) : Random Bool := do
-  let x <- Unif (Finset.range n) -- Let x be uniformly distributed on {0, ..., n-1}.
-  let y <- Unif (Finset.range n) -- Let y be uniformly distributed on {0, ..., n-1} (independently).
-  return Nat.gcd x y = 1 -- The event that x and y are coprime.
+-- Draw two numbers between 1 and N uniformly at random.
+def TwoNumbers (N := 100):= (Unif {1,..,N}) ⊗ (Unif {1,..,N})
 
--- #eval Probability (randomNumbersCoprime 10)
--- Output: (57 : Rat)/100
-
--- Draw two numbers between 1 and 100 uniformly at random. The Probability that they are coprime is exactly 57%!
-example : Probability (randomNumbersCoprime 10) = 57/100 := by rfl
+-- The Probability that they are coprime is close to 6/π²!
+-- #eval ℙ[gcd n m = 1 | (n, m) ~ TwoNumbers]
+-- >> (6087 : Rat)/10000
+-- #eval ℙ[gcd n m = 1 | (n, m) ~ TwoNumbers 10]
+-- >> (63 : Rat)/100
+example : ℙ[gcd n m = 1 | (n, m) ~ TwoNumbers 10] = 63/100 := by rfl
 
 -- *Birthday Paradox*
 
 -- What's the probability that among three people, two of them were born in the same quarter of the year?
-def twoPeopleWithSameQuarterOfBirth : Random Bool := do
-  let l <- IID (Unif {1, 2, 3, 4}) 3
-  return ∃ i j : (Fin 3), l[i]! = l[j]! ∧ i ≠ j
+-- #eval ℙ[∃ i j : (Fin 3), l[ i ]! = l[ j ]! ∧ i ≠ j | l ~ IID (Unif {1,..,4}) 3]
+-- >> (5 : Rat)/8
 
--- #eval Probability twoPeopleWithSameQuarterOfBirth
-
-theorem BirthdayParadox : Probability twoPeopleWithSameQuarterOfBirth = 5/8 := by rfl
+example : ℙ[∃ i j : (Fin 3), l[i]! = l[j]! ∧ i ≠ j | l ~ IID (Unif {1,..,4}) 3] = 5/8 := by rfl
 
 -- *Monty Hall Prolem*
 
-def winCar : Random Bool := conditionally do -- Define event "winCar" conditionally.
-  let carDoor <- Unif {1, 2, 3} -- A car is placed uniformly at random behind one of three doors.
-  let initialDoor <- Unif {1, 2, 3} -- You choose a door, uniformly at random.
-  let montysDoor <- Unif ({1, 2, 3} \ {carDoor, initialDoor}) -- Monty Hall picks a door (neither your initially chosen door, nor the one with the car).
-  return carDoor = 2 | initialDoor = 1 ∧ montysDoor = 3 -- The event that the car is behind Door 2 (switching), given that you chose Door 1, and Monty Door 3.
+def Car : Random ℕ := randomly do
+  let car <-~ Unif {1, 2, 3}
+  let pick := 1
+  let goat <-~ Unif ({1, 2, 3} \ {car, pick})
+  observe <| goat = 3
+  return car
 
-theorem MontyHallProblem : Probability winCar = 2/3 := by rfl
+-- #eval ℙ[n = 2 | n ~ Car]
+-- >> (2 : Rat)/3
+
+example : ℙ[n = 2 | n ~ Car] = 2/3 := by rfl
 
 -- *GMAT Example Problem*
 
@@ -78,33 +94,25 @@ What is the probability that, in five throws,
 she will make at least four baskets?"
 -/
 
--- Event that she makes her next throw given that she succeeded/failed on her previous one.
-def nextThrow (lastThrowSuccess : Bool) : Random Bool := do
+-- Event that she makes her next basket after making her previous one.
+def makes_next_basket_after (makes_basket : Bool) : Random Bool := do
   -- "If she has just made a basket on her previous throw, she has a 80% of making the next basket."
-  let nextThrowIfSuccess <- Bernoulli ((8 : ℚ)/10)
+  let x <- Bernoulli ((8 : ℚ)/10)
   -- "If she has just failed to make a basket on her previous throw, she has a 40% of making the next basket."
-  let nextThrowIfFail <- Bernoulli ((4 : ℚ)/10)
-  return if lastThrowSuccess then nextThrowIfSuccess else nextThrowIfFail
+  let y <- Bernoulli ((4 : ℚ)/10)
+  return if makes_basket then x else y
 
-def FourBasketsInFiveThrows : Random Bool := do
-  let firstThrowSuccess <- Bernoulli ((6 : ℚ)/10) -- 6/10 chance on the first free throw.
-  let mut numberOfSuccesses := if firstThrowSuccess then 1 else 0 -- Initialise number of baskets.
-  let mut CurrentThrowSuccess := firstThrowSuccess
-  for _ in [0:4] do -- After her first free throw, there are four more.
-    CurrentThrowSuccess <- nextThrow CurrentThrowSuccess
-    numberOfSuccesses := if CurrentThrowSuccess then numberOfSuccesses + 1 else numberOfSuccesses
-  return numberOfSuccesses ≥ 4 -- Player makes at least four baskets.
+def n_baskets : Random ℕ := do
+  -- "On her first free throw, she has a 60% chance of making the basket."
+  let makes_first_basket <- Bernoulli ((6 : ℚ)/10)
+  -- Initialise number of baskets:
+  let mut n := if makes_first_basket then 1 else 0
+  let mut makes_basket := makes_first_basket
+  for _ in [0:4] do -- After her first free throw, she has four more.
+    makes_basket <- makes_next_basket_after makes_basket
+    n := if makes_basket then n + 1 else n
+  return n
 
--- #eval Probability FourBasketsInFiveThrows
--- Output: (1504 : Rat)/3125
--- This is indeed the correct answer!
-
--- *Bayesian Inference*
-
-def coinFair : Random Bool := conditionally do
-  let p <- Unif {((0 : ℚ)/4), ((1 : ℚ)/4), ((2 : ℚ)/4), ((3 : ℚ)/4), ((4 : ℚ)/4)}
-  let observations <- IID (Bernoulli p) 3
-  return p = 1/2 | observations = [true, false, false]
-
--- #eval Probability coinFair
--- 2/5
+-- #eval ℙ[n ≥ 4 | n ~ n_baskets]
+-- >> (1504 : Rat)/3125
+-- This is the correct answer!
