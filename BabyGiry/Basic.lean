@@ -130,6 +130,16 @@ def Binomial (n : ℕ) (p : ℚ) : Random ℕ := do
   return sum
 
 
+def Pick [DecidableEq α] [Inhabited α] (n : ℕ) (s : List α) : Random (List α) := do
+  let mut picks := ([] : List α)
+  let mut s' := s
+  for _ in List.range n do
+    let x <- Unif s'.toFinset
+    picks := picks.append [x]
+    s' := s'.filter (fun y => y ≠ x)
+  return picks
+
+
 -- *Auxiliary definitions and lemmas*
 
 def Probability (event : Random Bool) : ℚ := event.expectation (fun x ↦ if x then 1 else 0)
