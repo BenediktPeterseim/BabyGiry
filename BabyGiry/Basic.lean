@@ -140,6 +140,21 @@ def Pick [DecidableEq α] [Inhabited α] (n : ℕ) (s : List α) : Random (List 
   return picks
 
 
+-- Helper function to swap two elements of a list.
+def Swap [Inhabited α] (l : List α) (i j : ℕ) : List α :=
+let a := l[i]!
+let b := l[j]!
+(l.set j a).set i b
+
+-- Fisher-Yates shuffle algorithm.
+def Shuffle [Inhabited α] (l : List α) : Random (List α) := do
+  let mut l' := l
+  for i in List.range (l.length - 1) do
+    let j ← Unif (Finset.Icc 1 i)
+    l' := Swap l' i j
+  return l'
+
+
 -- *Auxiliary definitions and lemmas*
 
 def Probability (event : Random Bool) : ℚ := event.expectation (fun x ↦ if x then 1 else 0)
