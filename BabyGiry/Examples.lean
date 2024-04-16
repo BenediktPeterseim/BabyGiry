@@ -117,6 +117,11 @@ def n_baskets : Random ℕ := do
 -- >> (1504 : Rat)/3125
 -- This is the correct answer!
 
+/-!
+The examples that follow are similar GMAT-type problems, used to give few-shot prompts to LLMs.
+This works reasonably well, but far from perfectly.
+-/
+
 -- If the probability of rain on any given day in City X is 50 percent,
 -- what is the probability that it rains on exactly 3 days in a 5-day period?
 def RainOnThreeDays : Random Bool := do
@@ -170,7 +175,7 @@ def AtLeastThreeHeadsOnConsecutiveTosses : Random Bool := do
 def TestProblem : Random Bool := do
   let x <- Unif {1,..,6} -- Roll the first die.
   let y <- Unif {1,..,6} -- Roll the second die.
-  return x % 2 = 0 || x + y = 8 -- event that either the first die is even or the total is 8.
+  return x % 2 = 0 ∨ x + y = 8 -- event that either the first die is even or the total is 8.
 
 -- #eval ℙ[E | E ~ TestProblem]
 -- >> 5/9
@@ -197,3 +202,48 @@ def AtLeastOneGreaterThanFour : Random Bool := do
   return Roll1 > 4 ∨ Roll2 > 4 -- event that at least one roll results in a number greater than 4.
 
 -- #eval ℙ[E | E ~ AtLeastOneGreaterThanFour]
+
+-- Three dice are tossed once. What's the probability that at least two of them are equal?
+def AtLeastTwoEqual : Random Bool := do
+  let x <- Unif {1,..,6} -- Roll the first die.
+  let y <- Unif {1,..,6} -- Roll the second die.
+  let z <- Unif {1,..,6} -- Roll the third die.
+  return x = y ∨ x = z ∨ y = z -- event that at least two of them are equal.
+
+-- #eval ℙ[E | E ~ AtLeastTwoEqual]
+-- >> 4/9
+
+-- Out of 13 applicants for a job, there are 5 women and 8 men. Two persons are to be selected for the job.
+-- The probability that at least one of the selected persons will be a woman is?
+def AtLeastOneWoman : Random Bool := do
+  -- There are 13 applicants: applicants 0, 1, 2, 3, 4 are women; 5, 6, 7, 8, 9, 10, 11, 12 are men.
+  let Applicants := List.range 13
+  let Selected <- Pick 2 Applicants -- Select two persons.
+  let Women := Selected.filter (fun x => x < 5) -- Select the women.
+  return Women.length ≥ 1 -- Event that at least one of the selected persons is a woman.
+
+-- #eval ℙ[E | E ~ AtLeastOneWoman]
+-- >> 25/39
+
+-- Tanya prepared 4 different letters to be sent to 4 different addresses. For each letter, she prepared an envelope with its correct address.
+-- If the 4 letters are to be put into the 4 envelopes at random,
+-- what is the probability that only 1 letter will be put into the envelope with its correct address?
+def AtLeastOneCorrectAddress : Random Bool := do
+  let Letters := List.range 4 -- 4 letters.
+  let Envelopes <- Shuffle Letters -- Put the letters into the envelopes at random.
+  let EnvelopesWithCorrectAddress := Envelopes.filter (fun x => Envelopes[x]! = x)
+  -- Event that only (i.e. exaclty) 1 letter is put into the envelope with its correct address:
+  return EnvelopesWithCorrectAddress.length = 1
+
+-- #eval ℙ[E | E ~ AtLeastOneCorrectAddress]
+-- >> 1/3
+
+-- If 2 numbers are selected from the first 8 prime numbers,
+-- what is the probability that the sum of the 2 numbers selected is an even number?
+def SumIsEven : Random Bool := do
+  let Primes := [2,3,5,7,11,13,17,19]
+  let Selected <- Pick 2 Primes
+  return Selected.sum % 2 = 0
+
+-- #eval ℙ[E | E ~ SumIsEven]
+-- >> 3/4

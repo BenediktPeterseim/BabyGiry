@@ -149,8 +149,9 @@ let b := l[j]!
 -- Fisher-Yates shuffle algorithm.
 def Shuffle [Inhabited α] (l : List α) : Random (List α) := do
   let mut l' := l
-  for i in List.range (l.length - 1) do
-    let j ← Unif (Finset.Icc 1 i)
+  for k in List.range (l.length-1) do
+    let i := l.length - k - 1
+    let j ← Unif (Finset.Icc 0 i)
     l' := Swap l' i j
   return l'
 
