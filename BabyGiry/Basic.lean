@@ -129,12 +129,12 @@ def Binomial (n : ℕ) (p : ℚ) : Random ℕ := do
       sum := sum + 1
   return sum
 
-
+-- *TODO* correct implementation of `Pick`
 def Pick [DecidableEq α] [Inhabited α] (n : ℕ) (s : List α) : Random (List α) := do
   let mut picks := ([] : List α)
   let mut s' := s
   for _ in List.range n do
-    let x <- Unif s'.toFinset
+    let x <- Unif s'.toFinset -- This is not the intended behavior!
     picks := picks.append [x]
     s' := s'.filter (fun y => y ≠ x)
   return picks
