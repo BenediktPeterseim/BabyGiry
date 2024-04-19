@@ -40,6 +40,8 @@ def Trial : Random (String × String) := do
 -- #eval ℙ[coin₂ = "gold" | coin₁ = "gold", (coin₁, coin₂) ~ Trial]
 -- >> (2 : Rat)/3
 example : ℙ[coin₂ = "gold" | coin₁ = "gold", (coin₁, coin₂) ~ Trial] = 2/3 := by rfl
+
+
 /-
 We can give an even more literal formalisation of the problem
 if we use a probabilistic-programming-style `randomly do` notation,
@@ -57,11 +59,12 @@ def CoinGold : Random Bool := randomly do
   -- From this box, withdraw one coin at random.
   let i <-~ Unif {0,1} -- (random index)
   let coin₁ := box[i]! -- (random coin)
-  -- If that happens to be a gold coin,
-  observe <| coin₁ = "gold"
+  -- If that happens to be a gold coin, ...
+  observe (coin₁ = "gold")
+  -- ... the event that the next coin,
   let j := (i + 1) % 2 -- (the other index)
   let coin₂ := box[j]! -- (next coin)
-  -- Event that the next coin is also a gold coin:
+  -- ..., is also a gold coin is:
   return coin₂ = "gold"
 
 -- #eval ℙ[E | E ~ CoinGold]
