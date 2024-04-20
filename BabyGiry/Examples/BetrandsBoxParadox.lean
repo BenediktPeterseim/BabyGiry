@@ -30,11 +30,9 @@ def Trial : Random (String × String) := do
   -- Choose a box at random.
   let box <- Unif Boxes
   -- From this box, withdraw one coin at random.
-  let i <- Unif {0,1} -- (random index)
-  let coin₁ := box[i]! -- (random coin)
+  let (coin₁, box') <- WithdrawOne box -- (random coin)
   -- The next coin is the other one in the same box.
-  let j := (i + 1) % 2 -- (the other index)
-  let coin₂ := box[j]! -- (next coin)
+  let coin₂ := box'.head! -- (next coin)
   return (coin₁, coin₂)
 
 -- #eval ℙ[coin₂ = "gold" | coin₁ = "gold", (coin₁, coin₂) ~ Trial]
@@ -57,14 +55,12 @@ def CoinGold : Random Bool := randomly do
   -- Choose a box at random.
   let box <-~ Unif Boxes
   -- From this box, withdraw one coin at random.
-  let i <-~ Unif {0,1} -- (random index)
-  let coin₁ := box[i]! -- (random coin)
+  let (coin₁, box') <-~ WithdrawOne box -- (random coin)
   -- If that happens to be a gold coin, ...
   observe (coin₁ = "gold")
   -- ... the event that the next coin,
-  let j := (i + 1) % 2 -- (the other index)
-  let coin₂ := box[j]! -- (next coin)
-  -- ..., is also a gold coin is:
+  let coin₂ := box'.head! -- (next coin)
+  -- ..., is also a gold coin, is:
   return coin₂ = "gold"
 
 -- #eval ℙ[E | E ~ CoinGold]

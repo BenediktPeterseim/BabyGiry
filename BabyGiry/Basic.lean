@@ -129,15 +129,26 @@ def Binomial (n : ℕ) (p : ℚ) : Random ℕ := do
       sum := sum + 1
   return sum
 
--- *TODO* correct implementation of `Pick`
-def Pick [DecidableEq α] [Inhabited α] (n : ℕ) (s : List α) : Random (List α) := do
+
+def Withdraw [DecidableEq α] [Inhabited α] (n : ℕ) (l : List α) : Random (List α × List α) := do
   let mut picks := ([] : List α)
-  let mut s' := s
+  let mut l' := l
   for _ in List.range n do
-    let x <- Unif s'.toFinset -- This is not the intended behavior!
+    let i ← Unif (Finset.Icc 0 (l'.length-1)) -- random index
+    let x := l'[i]!
     picks := picks.append [x]
-    s' := s'.filter (fun y => y ≠ x)
+    l' := List.eraseIdx l' i
+  return (picks, l')
+
+
+def Pick [DecidableEq α] [Inhabited α] (n : ℕ) (l : List α) : Random (List α) := do
+  let (picks, _) <- Withdraw n l
   return picks
+
+
+def WithdrawOne [DecidableEq α] [Inhabited α] (l : List α) : Random (α × List α) := do
+  let (picks, l') <- Withdraw 1 l
+  return (picks.head!, l')
 
 
 -- Helper function to swap two elements of a list.

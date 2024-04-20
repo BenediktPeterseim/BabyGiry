@@ -235,7 +235,7 @@ def AtLeastOneCorrectAddress : Random Bool := do
   -- Event that only (i.e. exaclty) 1 letter is put into the envelope with its correct address:
   return EnvelopesWithCorrectAddress.length = 1
 
--- #eval ℙ[E | E ~ AtLeastOneCorrectAddress]
+--#eval ℙ[E | E ~ AtLeastOneCorrectAddress]
 -- >> 1/3
 
 -- If 2 numbers are selected from the first 8 prime numbers,
